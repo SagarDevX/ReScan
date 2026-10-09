@@ -51,8 +51,6 @@ export async function POST(request: Request) {
             );
         }
 
-        console.log("🌐 Fetching:", portfolioUrl.href);
-
         // 5. Fetch website
         const response = await fetch(portfolioUrl.href, {
             headers: {
@@ -72,11 +70,6 @@ export async function POST(request: Request) {
         // 6. Get HTML
         const html = await response.text();
 
-        console.log(
-            "📦 HTML received:",
-            html.length,
-            "characters"
-        );
 
         // 7. Load HTML with Cheerio
         const $ = cheerio.load(html);
@@ -111,12 +104,6 @@ export async function POST(request: Request) {
             .get()
             .filter((link) => link.text || link.href);
 
-        console.log("📄 Title:", title);
-        console.log("📝 Description:", description);
-        console.log("🔤 Headings:", headings);
-        console.log("📃 Paragraph count:", paragraphs.length);
-        console.log("🔗 Link count:", links.length);
-
         // 13. Prepare website data
         const websiteData = {
             title,
@@ -125,8 +112,6 @@ export async function POST(request: Request) {
             paragraphs,
             links,
         };
-
-        console.log("🤖 Sending portfolio to Gemini...");
 
         // 14. Send data to Gemini
         const start = Date.now();
@@ -348,9 +333,6 @@ ${JSON.stringify(websiteData, null, 2)}
             },
         });
 
-        console.log(
-            `⏱️ Gemini took ${Date.now() - start}ms`
-        );
 
         // 15. Get Gemini response
         const analysis = geminiResponse.text;
@@ -361,13 +343,10 @@ ${JSON.stringify(websiteData, null, 2)}
             );
         }
 
-        console.log("🤖 Gemini response:");
-        console.log(analysis);
 
         // 16. Parse JSON
         const parsedAnalysis = JSON.parse(analysis);
 
-        console.log("✅ Portfolio analysis finished");
 
         // 17. Return analysis
         return NextResponse.json({

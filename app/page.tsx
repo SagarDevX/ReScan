@@ -14,7 +14,7 @@ const Page = () => {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-black text-white">
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[70%] w-full md:h-[50%]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[45%] w-full opacity-70 sm:h-[55%] md:h-[50%]">
         <Shader />
       </div>
 
@@ -22,7 +22,7 @@ const Page = () => {
         <Navbar />
       </div>
 
-      <div className="relative z-10 flex h-[calc(100dvh-80px)] flex-col items-center justify-center gap-8 px-8 text-center">
+      <div className="relative z-10 flex min-h-[calc(100dvh-80px)] flex-col items-center justify-center gap-6 px-5 py-12 text-center sm:gap-8 sm:px-8">
 
         <h1 className="max-w-3xl text-3xl tracking-tight sm:text-4xl md:text-5xl font-medium">
           Strengthen your resume with clear AI insights.

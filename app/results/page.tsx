@@ -1,22 +1,14 @@
 
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Analysis = {
     overallScore: number;
-
-    scores: {
-        clarity: number;
-        impact: number;
-        ats: number;
-        structure: number;
-    };
-
+    scores: Record<string, number>;
     strengths: string[];
-
     weaknesses: string[];
-
     mistakes: {
         section: string;
         mistake: string;
@@ -24,37 +16,69 @@ type Analysis = {
     }[];
 };
 
+type AnalysisType = "resume" | "portfolio";
+
 export default function ResultsPage() {
-    const [analysis, setAnalysis] =
-        useState<Analysis | null>(null);
+    const [analysis, setAnalysis] = useState<Analysis | null>(null);
+    const [analysisType, setAnalysisType] = useState<AnalysisType>("resume");
+    const [portfolioUrl, setPortfolioUrl] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
 
     const router = useRouter();
 
     useEffect(() => {
-        const storedAnalysis =
-            sessionStorage.getItem("resume-analysis");
-
-        if (!storedAnalysis) {
-            return;
-        }
-
         try {
-            const parsedAnalysis = JSON.parse(
-                storedAnalysis
-            );
+            const portfolioData = sessionStorage.getItem("portfolio-analysis");
+            const resumeData = sessionStorage.getItem("resume-analysis");
 
-            setAnalysis(parsedAnalysis);
+            // Prefer the most recently saved analysis.
+            // The PortfolioInput component saves portfolio-analysis before navigating here.
+            if (portfolioData) {
+                const parsed = JSON.parse(portfolioData);
+
+                if (
+                    typeof parsed.overallScore === "number" &&
+                    parsed.scores &&
+                    Array.isArray(parsed.strengths) &&
+                    Array.isArray(parsed.weaknesses) &&
+                    Array.isArray(parsed.mistakes)
+                ) {
+                    setAnalysis(parsed);
+                    setAnalysisType("portfolio");
+                    setPortfolioUrl(
+                        sessionStorage.getItem("portfolio-url") || ""
+                    );
+                    return;
+                }
+            }
+
+            if (resumeData) {
+                const parsed = JSON.parse(resumeData);
+
+                if (
+                    typeof parsed.overallScore === "number" &&
+                    parsed.scores &&
+                    Array.isArray(parsed.strengths) &&
+                    Array.isArray(parsed.weaknesses) &&
+                    Array.isArray(parsed.mistakes)
+                ) {
+                    setAnalysis(parsed);
+                    setAnalysisType("resume");
+                    return;
+                }
+            }
         } catch (error) {
-            console.error(
-                "Failed to parse resume analysis:",
-                error
-            );
+            console.error("Failed to load analysis results:", error);
+        } finally {
+            setIsLoading(false);
         }
+
+        setIsLoading(false);
     }, []);
 
-    if (!analysis) {
+    if (isLoading) {
         return (
-            <main className="flex min-h-screen items-center justify-center text-black bg-[#FAFAF7]">
+            <main className="flex min-h-screen items-center justify-center bg-[#FAFAF7] text-black">
                 <p className="text-sm text-neutral-500">
                     Loading results...
                 </p>
@@ -62,47 +86,85 @@ export default function ResultsPage() {
         );
     }
 
-    const scores = [
-        {
-            name: "Clarity",
-            score: analysis.scores.clarity,
-        },
-        {
-            name: "Impact",
-            score: analysis.scores.impact,
-        },
-        {
-            name: "ATS",
-            score: analysis.scores.ats,
-        },
-        {
-            name: "Structure",
-            score: analysis.scores.structure,
-        },
-    ];
+    if (!analysis) {
+        return (
+            <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FAFAF7] text-black">
+                <h1 className="text-2xl font-semibold">
+                    No analysis found
+                </h1>
+
+                <p className="text-sm text-neutral-500">
+                    Please analyze your resume or portfolio first.
+                </p>
+
+                <button
+                    onClick={() => router.push("/")}
+                    className="rounded-xl bg-black px-5 py-3 text-sm text-white transition hover:bg-neutral-800"
+                >
+                    Back to ReScan
+                </button>
+            </main>
+        );
+    }
+
+    const scores = Object.entries(analysis.scores).map(([key, score]) => ({
+        name: {
+            clarity: "Clarity",
+            impact: "Impact",
+            ats: "ATS",
+            structure: "Structure",
+            content: "Content",
+            positioning: "Positioning",
+            ux: "User Experience",
+            seo: "SEO",
+        }[key] || key.charAt(0).toUpperCase() + key.slice(1),
+        score,
+    }));
+
+    const title =
+        analysisType === "portfolio"
+            ? "Portfolio Analysis"
+            : "Resume Analysis";
 
     return (
         <main className="min-h-screen bg-white text-black">
-            <div className="w-full px-4 py-2 ">
-                <button className="fixed px-2 py-1 rounded-2xl hover:bg-neutral-200 cursor-pointer transition-transform duration-300 ease-linear text-neutral-500 "
-                  onClick={() => router.push("/")}
-                >↩ back</button>
+            <div className="px-4 py-2">
+                <button
+                    type="button"
+                    onClick={() => router.push("/")}
+                    className="fixed z-10 cursor-pointer rounded-2xl px-3 py-2 text-neutral-500 transition-colors hover:bg-neutral-200"
+                >
+                    ↩ Back
+                </button>
             </div>
-            <div className="mx-auto max-w-4xl px-6 my-6">
 
+            <div className="mx-auto my-6 max-w-4xl px-6">
                 {/* Header */}
                 <header>
                     <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-                        Resume Analysis
+                        {title}
                     </h1>
 
                     <p className="mt-3 text-neutral-500">
-                        A detailed breakdown of your resume.
+                        {analysisType === "portfolio"
+                            ? "See what's working, what needs fixing, and how to improve your website."
+                            : "A detailed breakdown of your resume."}
                     </p>
+
+                    {analysisType === "portfolio" && portfolioUrl && (
+                        <a
+                            href={portfolioUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-block max-w-full truncate text-neutral-500 underline underline-offset-4 hover:text-black text-md"
+                        >
+                            {portfolioUrl}
+                        </a>
+                    )}
                 </header>
 
                 {/* Overall Score */}
-                <section className="mt-16">
+                <section className="mt-8">
                     <p className="text-sm text-neutral-500">
                         Overall Score
                     </p>
@@ -118,7 +180,9 @@ export default function ResultsPage() {
                 {/* Individual Scores */}
                 <section className="mt-16">
                     <h2 className="text-xl font-semibold">
-                        Resume Scores
+                        {analysisType === "portfolio"
+                            ? "Website Scores"
+                            : "Resume Scores"}
                     </h2>
 
                     <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -149,78 +213,79 @@ export default function ResultsPage() {
                     </h2>
 
                     <ul className="mt-6 space-y-4">
-                        {analysis.strengths.map(
-                            (strength, index) => (
-                                <li
-                                    key={index}
-                                    className="border-b border-neutral-200 pb-4 text-neutral-700"
-                                >
-                                    {strength}
-                                </li>
-                            )
-                        )}
+                        {analysis.strengths.map((strength, index) => (
+                            <li
+                                key={index}
+                                className="border-b border-neutral-200 pb-4 text-neutral-700"
+                            >
+                                {strength}
+                            </li>
+                        ))}
                     </ul>
                 </section>
 
                 {/* Weaknesses */}
                 <section className="mt-16">
                     <h2 className="text-2xl font-semibold">
-                        Weaknesses
+                        Areas to Improve
                     </h2>
 
                     <ul className="mt-6 space-y-4">
-                        {analysis.weaknesses.map(
-                            (weakness, index) => (
-                                <li
-                                    key={index}
-                                    className="border-b border-neutral-200 pb-4 text-neutral-700"
-                                >
-                                    {weakness}
-                                </li>
-                            )
-                        )}
+                        {analysis.weaknesses.map((weakness, index) => (
+                            <li
+                                key={index}
+                                className="border-b border-neutral-200 pb-4 text-neutral-700"
+                            >
+                                {weakness}
+                            </li>
+                        ))}
                     </ul>
                 </section>
 
                 {/* Mistakes & Fixes */}
                 <section className="mt-16">
                     <h2 className="text-2xl font-semibold">
-                        Mistakes & Fixes
+                        Problems & Fixes
                     </h2>
 
                     <div className="mt-6 space-y-8">
-                        {analysis.mistakes.map(
-                            (item, index) => (
-                                <div
-                                    key={index}
-                                    className="border-b border-neutral-200 pb-8"
-                                >
-                                    {/* Section */}
+                        {analysis.mistakes.map((item, index) => (
+                            <div
+                                key={index}
+                                className="border-b border-neutral-200 pb-8"
+                            >
+                                <p className="text-sm font-medium text-neutral-500">
+                                    {item.section}
+                                </p>
+
+                                <h3 className="mt-2 text-lg font-medium">
+                                    {item.mistake}
+                                </h3>
+
+                                <div className="mt-4">
                                     <p className="text-sm font-medium text-neutral-500">
-                                        {item.section}
+                                        How to fix it
                                     </p>
 
-                                    {/* Mistake */}
-                                    <h3 className="mt-2 text-lg font-medium">
-                                        {item.mistake}
-                                    </h3>
-
-                                    {/* Fix */}
-                                    <div className="mt-4">
-                                        <p className="text-sm font-medium text-neutral-500">
-                                            Fix
-                                        </p>
-
-                                        <p className="mt-1 leading-7 text-neutral-700">
-                                            {item.fix}
-                                        </p>
-                                    </div>
+                                    <p className="mt-1 leading-7 text-neutral-700">
+                                        {item.fix}
+                                    </p>
                                 </div>
-                            )
-                        )}
+                            </div>
+                        ))}
                     </div>
                 </section>
 
+                {/* Bottom CTA */}
+                <div className=" border-t border-neutral-200 py-8">
+                    <button
+                        type="button"
+                        onClick={() => router.push("/")}
+                        className="rounded-xl cursor-pointer bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
+                    >
+                        Analyze another {analysisType}
+                    </button>
+                </div>
             </div>
         </main>
     );

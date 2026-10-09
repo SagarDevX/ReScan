@@ -188,7 +188,7 @@ export default function ResumeUpload() {
                     type="button"
                     disabled={isAnalyzing}
                     onClick={handleAnalyze}
-                    className="mt-4 w-full cursor-pointer rounded-xl bg-black py-3.5 text-sm font-medium text-white transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full cursor-pointer rounded-xl bg-white py-3.5 text-sm font-medium text-black transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isAnalyzing ? (
                         <span className="flex items-center justify-center gap-2">
