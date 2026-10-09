@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -19,7 +20,6 @@ export default function ResumeUpload({
         accept: {
             "application/pdf": [".pdf"],
         },
-
         maxFiles: 1,
         maxSize: 10 * 1024 * 1024,
 
@@ -38,14 +38,10 @@ export default function ResumeUpload({
     });
 
     const handleAnalyze = async () => {
-        if (!file || isAnalyzing) {
-            return;
-        }
+        if (!file || isAnalyzing) return;
 
         setError("");
         setIsAnalyzing(true);
-
-        console.log("🚀 Sending file:", file.name);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -57,35 +53,37 @@ export default function ResumeUpload({
                 body: formData,
             });
 
-            console.log("📡 Status:", response.status);
+            const data = await response.json();
 
-            const text = await response.text();
-
-            console.log("📦 Raw response:", text);
-
-            if (!response.ok) {
-                console.error("❌ API error:", text);
-                setError("Failed to analyze your resume. Please try again.");
+            if (!response.ok || !data.success || !data.analysis) {
+                setError(
+                    data.error || "Failed to analyze your resume. Please try again."
+                );
                 return;
             }
-
-            const data = JSON.parse(text);
-
-            console.log("📊 Resume analysis:", data.analysis);
+            sessionStorage.removeItem("portfolio-analysis");
+            sessionStorage.removeItem("portfolio-url");
 
             sessionStorage.setItem(
                 "resume-analysis",
                 JSON.stringify(data.analysis)
             );
-
-            console.log("✅ Analysis saved");
+            sessionStorage.setItem("analysis-type", "resume");
+            sessionStorage.setItem(
+                "resume-file-name",
+                data.fileName || file.name
+            );
+            sessionStorage.setItem(
+                "brutal-mode",
+                String(data.brutalMode ?? brutalMode)
+            );
 
             window.location.href = "/results";
         } catch (error) {
-            console.error("❌ Upload failed:", error);
+            console.error("Resume upload failed:", error);
 
             setError(
-                "Something went wrong while analyzing your resume."
+                "Something went wrong while analyzing your resume. Please try again."
             );
         } finally {
             setIsAnalyzing(false);
@@ -94,18 +92,12 @@ export default function ResumeUpload({
 
     return (
         <div className="mt-2 w-full max-w-md">
-
-            <div
-                {...getRootProps()}
-                className="w-full outline-none"
-            >
+            <div {...getRootProps()} className="w-full outline-none">
                 <input {...getInputProps()} />
 
                 <motion.div
                     animate={{
-                        borderColor: isDragActive
-                            ? "#54E346"
-                            : "#E5E5E5",
+                        borderColor: isDragActive ? "#54E346" : "#E5E5E5",
                         scale: isDragActive ? 1.01 : 1,
                     }}
                     transition={{
@@ -115,27 +107,23 @@ export default function ResumeUpload({
                     className="flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-neutral-900 transition-all duration-200 ease-in-out hover:bg-neutral-800"
                 >
                     {file ? (
-                        <>
-                            <div className="text-center">
-                                <p className="text-base font-medium text-white">
-                                    {file.name}
-                                </p>
+                        <div className="text-center">
+                            <p className="text-base font-medium text-white">
+                                {file.name}
+                            </p>
 
-                                <p className="mt-2 text-sm text-neutral-500">
-                                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
+                            <p className="mt-2 text-sm text-neutral-500">
+                                {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
 
-                                <p className="mt-4 text-xs text-neutral-400">
-                                    Click to replace
-                                </p>
-                            </div>
-                        </>
+                            <p className="mt-4 text-xs text-neutral-400">
+                                Click to replace
+                            </p>
+                        </div>
                     ) : (
                         <>
                             <motion.p
-                                animate={{
-                                    y: isDragActive ? -2 : 0,
-                                }}
+                                animate={{ y: isDragActive ? -2 : 0 }}
                                 className="text-lg font-medium text-neutral-400"
                             >
                                 {isDragActive
@@ -157,14 +145,8 @@ export default function ResumeUpload({
 
             {error && (
                 <motion.p
-                    initial={{
-                        opacity: 0,
-                        y: -5,
-                    }}
-                    animate={{
-                        opacity: 1,
-                        y: 0,
-                    }}
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
                     className="mt-3 text-center text-sm text-red-500"
                 >
                     {error}
@@ -173,14 +155,8 @@ export default function ResumeUpload({
 
             {file && (
                 <motion.button
-                    initial={{
-                        opacity: 0,
-                        y: 10,
-                    }}
-                    animate={{
-                        opacity: 1,
-                        y: 0,
-                    }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{
                         duration: 0.25,
                         ease: "easeOut",
@@ -188,7 +164,7 @@ export default function ResumeUpload({
                     type="button"
                     disabled={isAnalyzing}
                     onClick={handleAnalyze}
-                    className="mt-4 w-full cursor-pointer rounded-xl bg-black py-3.5 text-sm font-medium text-white transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full cursor-pointer rounded-xl bg-white md:bg-black py-3.5 text-sm font-medium text-black md:text-white transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isAnalyzing ? (
                         <span className="flex items-center justify-center gap-2">

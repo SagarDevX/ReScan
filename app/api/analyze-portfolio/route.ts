@@ -70,6 +70,7 @@ export async function POST(request: Request) {
         }
 
         const html = await response.text();
+
         const $ = cheerio.load(html);
         $("script, style, noscript, iframe, svg, canvas").remove();
 

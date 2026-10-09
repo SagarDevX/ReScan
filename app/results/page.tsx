@@ -1,6 +1,5 @@
-
 "use client";
-
+import { motion } from "motion/react"
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -20,7 +19,8 @@ type AnalysisType = "resume" | "portfolio";
 
 export default function ResultsPage() {
     const [analysis, setAnalysis] = useState<Analysis | null>(null);
-    const [analysisType, setAnalysisType] = useState<AnalysisType>("resume");
+    const [analysisType, setAnalysisType] =
+        useState<AnalysisType>("resume");
     const [portfolioUrl, setPortfolioUrl] = useState("");
     const [isLoading, setIsLoading] = useState(true);
 
@@ -28,60 +28,104 @@ export default function ResultsPage() {
 
     useEffect(() => {
         try {
-            const portfolioData = sessionStorage.getItem("portfolio-analysis");
-            const resumeData = sessionStorage.getItem("resume-analysis");
+            const storedType = sessionStorage.getItem("analysis-type");
 
-            // Prefer the most recently saved analysis.
-            // The PortfolioInput component saves portfolio-analysis before navigating here.
-            if (portfolioData) {
-                const parsed = JSON.parse(portfolioData);
-
-                if (
-                    typeof parsed.overallScore === "number" &&
-                    parsed.scores &&
-                    Array.isArray(parsed.strengths) &&
-                    Array.isArray(parsed.weaknesses) &&
-                    Array.isArray(parsed.mistakes)
-                ) {
-                    setAnalysis(parsed);
-                    setAnalysisType("portfolio");
-                    setPortfolioUrl(
-                        sessionStorage.getItem("portfolio-url") || ""
-                    );
-                    return;
-                }
+            if (
+                storedType !== "resume" &&
+                storedType !== "portfolio"
+            ) {
+                setAnalysis(null);
+                return;
             }
 
-            if (resumeData) {
-                const parsed = JSON.parse(resumeData);
+            if (storedType === "portfolio") {
+                const portfolioData = sessionStorage.getItem(
+                    "portfolio-analysis"
+                );
 
-                if (
-                    typeof parsed.overallScore === "number" &&
-                    parsed.scores &&
-                    Array.isArray(parsed.strengths) &&
-                    Array.isArray(parsed.weaknesses) &&
-                    Array.isArray(parsed.mistakes)
-                ) {
-                    setAnalysis(parsed);
-                    setAnalysisType("resume");
+                if (!portfolioData) {
+                    setAnalysis(null);
                     return;
                 }
+
+                const parsed: Analysis = JSON.parse(portfolioData);
+
+                if (
+                    typeof parsed.overallScore !== "number" ||
+                    !parsed.scores ||
+                    typeof parsed.scores !== "object" ||
+                    !Array.isArray(parsed.strengths) ||
+                    !Array.isArray(parsed.weaknesses) ||
+                    !Array.isArray(parsed.mistakes)
+                ) {
+                    setAnalysis(null);
+                    return;
+                }
+
+                setAnalysis(parsed);
+                setAnalysisType("portfolio");
+                setPortfolioUrl(
+                    sessionStorage.getItem("portfolio-url") || ""
+                );
+                return;
+            }
+
+            if (storedType === "resume") {
+                const resumeData = sessionStorage.getItem(
+                    "resume-analysis"
+                );
+
+                if (!resumeData) {
+                    setAnalysis(null);
+                    return;
+                }
+
+                const parsed: Analysis = JSON.parse(resumeData);
+
+                if (
+                    typeof parsed.overallScore !== "number" ||
+                    !parsed.scores ||
+                    typeof parsed.scores !== "object" ||
+                    !Array.isArray(parsed.strengths) ||
+                    !Array.isArray(parsed.weaknesses) ||
+                    !Array.isArray(parsed.mistakes)
+                ) {
+                    setAnalysis(null);
+                    return;
+                }
+
+                setAnalysis(parsed);
+                setAnalysisType("resume");
             }
         } catch (error) {
             console.error("Failed to load analysis results:", error);
+            setAnalysis(null);
         } finally {
             setIsLoading(false);
         }
-
-        setIsLoading(false);
     }, []);
 
     if (isLoading) {
         return (
             <main className="flex min-h-screen items-center justify-center bg-[#FAFAF7] text-black">
-                <p className="text-sm text-neutral-500">
-                    Loading results...
-                </p>
+                <div className="flex items-center gap-2">
+                    {[0, 1, 2].map((dot) => (
+                        <motion.div
+                            key={dot}
+                            className="h-2.5 w-2.5 rounded-full bg-neutral-800"
+                            animate={{
+                                y: [0, -12, 0],
+                            }}
+                            transition={{
+                                duration: 0.6,
+                                repeat: Infinity,
+                                repeatType: "loop",
+                                delay: dot * 0.3,
+                                ease: "easeInOut",
+                            }}
+                        />
+                    ))}
+                </div>
             </main>
         );
     }
@@ -98,6 +142,7 @@ export default function ResultsPage() {
                 </p>
 
                 <button
+                    type="button"
                     onClick={() => router.push("/")}
                     className="rounded-xl bg-black px-5 py-3 text-sm text-white transition hover:bg-neutral-800"
                 >
@@ -107,19 +152,25 @@ export default function ResultsPage() {
         );
     }
 
-    const scores = Object.entries(analysis.scores).map(([key, score]) => ({
-        name: {
-            clarity: "Clarity",
-            impact: "Impact",
-            ats: "ATS",
-            structure: "Structure",
-            content: "Content",
-            positioning: "Positioning",
-            ux: "User Experience",
-            seo: "SEO",
-        }[key] || key.charAt(0).toUpperCase() + key.slice(1),
-        score,
-    }));
+    const scoreLabels: Record<string, string> = {
+        clarity: "Clarity",
+        impact: "Impact",
+        ats: "ATS",
+        structure: "Structure",
+        content: "Content",
+        positioning: "Positioning",
+        ux: "User Experience",
+        seo: "SEO",
+    };
+
+    const scores = Object.entries(analysis.scores).map(
+        ([key, score]) => ({
+            name:
+                scoreLabels[key] ||
+                key.charAt(0).toUpperCase() + key.slice(1),
+            score,
+        })
+    );
 
     const title =
         analysisType === "portfolio"
@@ -132,14 +183,14 @@ export default function ResultsPage() {
                 <button
                     type="button"
                     onClick={() => router.push("/")}
-                    className="fixed z-10 cursor-pointer rounded-2xl px-3 py-2 text-neutral-500 transition-colors hover:bg-neutral-200"
+                    className="md:fixed z-10 cursor-pointer rounded-2xl px-3 py-2 text-neutral-500 transition-colors hover:bg-neutral-200"
                 >
                     ↩ Back
                 </button>
             </div>
 
             <div className="mx-auto my-6 max-w-4xl px-6">
-                {/* Header */}
+
                 <header>
                     <h1 className="mt-2 text-4xl font-semibold tracking-tight">
                         {title}
@@ -156,14 +207,13 @@ export default function ResultsPage() {
                             href={portfolioUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-3 inline-block max-w-full truncate text-neutral-500 underline underline-offset-4 hover:text-black text-md"
+                            className="mt-3 inline-block max-w-full truncate text-md text-neutral-500 underline underline-offset-4 hover:text-black"
                         >
                             {portfolioUrl}
                         </a>
                     )}
                 </header>
 
-                {/* Overall Score */}
                 <section className="mt-8">
                     <p className="text-sm text-neutral-500">
                         Overall Score
@@ -177,7 +227,6 @@ export default function ResultsPage() {
                     </p>
                 </section>
 
-                {/* Individual Scores */}
                 <section className="mt-16">
                     <h2 className="text-xl font-semibold">
                         {analysisType === "portfolio"
@@ -206,7 +255,6 @@ export default function ResultsPage() {
                     </div>
                 </section>
 
-                {/* Strengths */}
                 <section className="mt-16">
                     <h2 className="text-2xl font-semibold">
                         Strengths
@@ -224,7 +272,6 @@ export default function ResultsPage() {
                     </ul>
                 </section>
 
-                {/* Weaknesses */}
                 <section className="mt-16">
                     <h2 className="text-2xl font-semibold">
                         Areas to Improve
@@ -242,7 +289,6 @@ export default function ResultsPage() {
                     </ul>
                 </section>
 
-                {/* Mistakes & Fixes */}
                 <section className="mt-16">
                     <h2 className="text-2xl font-semibold">
                         Problems & Fixes
@@ -276,12 +322,11 @@ export default function ResultsPage() {
                     </div>
                 </section>
 
-                {/* Bottom CTA */}
-                <div className=" border-t border-neutral-200 py-8">
+                <div className="border-t border-neutral-200 py-8">
                     <button
                         type="button"
                         onClick={() => router.push("/")}
-                        className="rounded-xl cursor-pointer bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
+                        className="cursor-pointer rounded-xl bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
                     >
                         Analyze another {analysisType}
                     </button>

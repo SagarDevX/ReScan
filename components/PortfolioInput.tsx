@@ -16,18 +16,15 @@ export default function PortfolioInput({
 
     const router = useRouter();
 
+
     const handleAnalyze = async () => {
         if (!url.trim() || isAnalyzing) return;
 
         setIsAnalyzing(true);
         setError("");
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90000);
 
         try {
-            console.log("1. Sending portfolio URL...");
-
             const response = await fetch("/api/analyze-portfolio", {
                 method: "POST",
                 headers: {
@@ -37,50 +34,48 @@ export default function PortfolioInput({
                     url: url.trim(),
                     brutalMode,
                 }),
-                signal: controller.signal,
             });
-
-            console.log("2. API status:", response.status);
 
             const data = await response.json();
 
-            console.log("3. API response:", data);
-
             if (!response.ok || !data.success || !data.analysis) {
                 throw new Error(
-                    data.error || "Portfolio analysis failed."
+                    data.error || "Failed to analyze portfolio."
                 );
             }
+            sessionStorage.removeItem("resume-analysis");
 
             sessionStorage.setItem(
                 "portfolio-analysis",
                 JSON.stringify(data.analysis)
             );
 
-            sessionStorage.setItem("portfolio-url", data.url);
+            sessionStorage.setItem(
+                "portfolio-url",
+                data.url || url.trim()
+            );
 
-            console.log("4. Navigating to results...");
+            sessionStorage.setItem("analysis-type", "portfolio");
+
+            sessionStorage.setItem(
+                "brutal-mode",
+                String(data.brutalMode ?? brutalMode)
+            );
 
             router.push("/results");
-        } catch (err) {
-            console.error("Portfolio analysis error:", err);
+        } catch (error) {
+            console.error("Portfolio analysis failed:", error);
 
-            if (err instanceof Error && err.name === "AbortError") {
-                setError(
-                    "Analysis is taking too long. Try another portfolio URL."
-                );
-            } else {
-                setError(
-                    err instanceof Error
-                        ? err.message
-                        : "Something went wrong. Please try again."
-                );
-            }
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Something went wrong. Please try again."
+            );
         } finally {
-            clearTimeout(timeout);
             setIsAnalyzing(false);
         }
     };
+
 
     return (
         <div className="mt-2 min-h-48 w-full max-w-md">
@@ -107,7 +102,7 @@ export default function PortfolioInput({
                         type="button"
                         onClick={handleAnalyze}
                         disabled={isAnalyzing}
-                        className="mt-4 w-full rounded-xl bg-black py-3.5 text-sm font-medium text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                        className="mt-4 w-full rounded-xl bg-white md:bg-black py-3.5 text-sm font-medium text-black md:text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                     >
                         {isAnalyzing ? (
                             <span className="flex items-center justify-center gap-2">
