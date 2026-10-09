@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -16,13 +17,36 @@ export default function PortfolioInput({
 
     const router = useRouter();
 
-
     const handleAnalyze = async () => {
         if (!url.trim() || isAnalyzing) return;
 
         setIsAnalyzing(true);
         setError("");
 
+        // Add https:// if the user hasn't provided a protocol.
+        let normalizedUrl = url.trim();
+
+        if (!/^https?:\/\//i.test(normalizedUrl)) {
+            normalizedUrl = `https://${normalizedUrl}`;
+        }
+
+        // Validate the URL.
+        try {
+            const parsedUrl = new URL(normalizedUrl);
+
+            if (
+                !["http:", "https:"].includes(parsedUrl.protocol) ||
+                !parsedUrl.hostname.includes(".") ||
+                parsedUrl.hostname.startsWith(".") ||
+                parsedUrl.hostname.endsWith(".")
+            ) {
+                throw new Error("Please enter a valid portfolio URL.");
+            }
+        } catch {
+            setError("Please enter a valid portfolio URL.");
+            setIsAnalyzing(false);
+            return;
+        }
 
         try {
             const response = await fetch("/api/analyze-portfolio", {
@@ -31,7 +55,7 @@ export default function PortfolioInput({
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    url: url.trim(),
+                    url: normalizedUrl,
                     brutalMode,
                 }),
             });
@@ -43,6 +67,7 @@ export default function PortfolioInput({
                     data.error || "Failed to analyze portfolio."
                 );
             }
+
             sessionStorage.removeItem("resume-analysis");
 
             sessionStorage.setItem(
@@ -52,7 +77,7 @@ export default function PortfolioInput({
 
             sessionStorage.setItem(
                 "portfolio-url",
-                data.url || url.trim()
+                data.url || normalizedUrl
             );
 
             sessionStorage.setItem("analysis-type", "portfolio");
@@ -76,14 +101,23 @@ export default function PortfolioInput({
         }
     };
 
-
     return (
         <div className="mt-2 min-h-48 w-full max-w-md">
             <input
-                type="url"
+                type="text"
+                inputMode="url"
+                autoComplete="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://yourportfolio.com"
+                onChange={(e) => {
+                    setUrl(e.target.value);
+                    setError("");
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                        handleAnalyze();
+                    }
+                }}
+                placeholder="Enter your portfolio URL"
                 disabled={isAnalyzing}
                 className="w-full rounded-2xl border border-neutral-400 bg-neutral-900 px-5 py-4 text-sm text-white outline-none transition-colors placeholder:text-neutral-500 focus:border-white disabled:opacity-50"
             />
@@ -102,11 +136,11 @@ export default function PortfolioInput({
                         type="button"
                         onClick={handleAnalyze}
                         disabled={isAnalyzing}
-                        className="mt-4 w-full rounded-xl bg-white md:bg-black py-3.5 text-sm font-medium text-black md:text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                        className="mt-4 w-full cursor-pointer rounded-xl bg-white py-3.5 text-sm font-medium text-black transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 md:bg-black md:text-white"
                     >
                         {isAnalyzing ? (
                             <span className="flex items-center justify-center gap-2">
-                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-black" />
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-black md:border-t-white" />
                                 Analyzing portfolio...
                             </span>
                         ) : (
@@ -117,7 +151,7 @@ export default function PortfolioInput({
             </AnimatePresence>
 
             {error && (
-                <p className="mt-3 text-sm text-red-600" role="alert">
+                <p className="mt-3 text-sm text-red-500" role="alert">
                     {error}
                 </p>
             )}
