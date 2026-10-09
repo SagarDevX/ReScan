@@ -14,7 +14,7 @@ const Page = () => {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-black text-white">
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[45%] w-full opacity-70 sm:h-[55%] md:h-[50%]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[30%] w-full overflow-hidden opacity-70 sm:h-[40%] md:h-[50%]">
         <Shader />
       </div>
 
