@@ -5,11 +5,13 @@ import Navbar from "@/components/Navbar";
 import ResumeUpload from "@/components/ResumeUpload";
 import PortfolioInput from "@/components/PortfolioInput";
 import { Shader } from "@/components/Shader";
+import BrutalModeToggle from "@/components/BrutalButton";
 
 const Page = () => {
   const [reviewType, setReviewType] = useState<"resume" | "portfolio">(
     "resume"
   );
+  const [brutalMode, setBrutalMode] = useState(false);
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-black text-white">
@@ -34,9 +36,8 @@ const Page = () => {
           feedback to make it stronger.
         </p>
 
-        {/* Review type toggle */}
         <div className="relative flex rounded-4xl border border-white/10 bg-neutral-900/70 p-1 backdrop-blur-xl" >
-          {/* Moving background */}
+  
           <motion.span
             className="absolute top-1 bottom-1 w-21 rounded-3xl border border-white/15 bg-white/10 backdrop-blur-md shadow-[inset_0_2px_1px_rgba(255,255,255,0.4),inset_0_-1px_1px_rgba(255,255,255,0.1),0_4px_12px_rgba(0,0,0,0.8),0_0_20px_rgba(255,255,255,0.2)]"
             animate={{
@@ -54,8 +55,8 @@ const Page = () => {
             type="button"
             onClick={() => setReviewType("resume")}
             className={`relative z-10 w-21 rounded-3xl px-4 py-2 text-sm ${reviewType === "resume"
-                ? "text-white"
-                : "text-neutral-600 hover:text-white cursor-pointer"
+              ? "text-white"
+              : "text-neutral-600 hover:text-white cursor-pointer"
               }`}
           >
             Resume
@@ -65,20 +66,25 @@ const Page = () => {
             type="button"
             onClick={() => setReviewType("portfolio")}
             className={`relative z-10 w-21 rounded-3xl px-4 py-2 text-sm ${reviewType === "portfolio"
-                ? "text-white"
-                : "text-neutral-600 hover:text-white cursor-pointer"
+              ? "text-white"
+              : "text-neutral-600 hover:text-white cursor-pointer"
               }`}
           >
             Portfolio
           </button>
         </div>
 
-        {/* Input */}
-        {reviewType === "resume" ? (
-          <ResumeUpload />
-        ) : (
-          <PortfolioInput />
-        )}
+        <div className="min-w-full flex flex-col items-center justify-center">
+          <BrutalModeToggle
+            active={brutalMode}
+            onChange={setBrutalMode}
+          />
+          {reviewType === "resume" ? (
+            <ResumeUpload brutalMode={brutalMode} />
+          ) : (
+            <PortfolioInput brutalMode={brutalMode} />
+          )}
+        </div>
 
       </div>
 

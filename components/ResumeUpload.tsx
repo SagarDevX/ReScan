@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "motion/react";
 
-export default function ResumeUpload() {
+type ResumeUploadProps = {
+    brutalMode: boolean;
+};
+
+export default function ResumeUpload({
+    brutalMode,
+}: ResumeUploadProps) {
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -43,6 +49,7 @@ export default function ResumeUpload() {
 
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("brutalMode", String(brutalMode));
 
         try {
             const response = await fetch("/api/analyze", {
@@ -66,7 +73,6 @@ export default function ResumeUpload() {
 
             console.log("📊 Resume analysis:", data.analysis);
 
-            // Save analysis temporarily
             sessionStorage.setItem(
                 "resume-analysis",
                 JSON.stringify(data.analysis)
@@ -74,7 +80,6 @@ export default function ResumeUpload() {
 
             console.log("✅ Analysis saved");
 
-            // Go to results page
             window.location.href = "/results";
         } catch (error) {
             console.error("❌ Upload failed:", error);
@@ -90,7 +95,6 @@ export default function ResumeUpload() {
     return (
         <div className="mt-2 w-full max-w-md">
 
-            {/* Upload area */}
             <div
                 {...getRootProps()}
                 className="w-full outline-none"
@@ -112,7 +116,6 @@ export default function ResumeUpload() {
                 >
                     {file ? (
                         <>
-                            {/* Selected file */}
                             <div className="text-center">
                                 <p className="text-base font-medium text-white">
                                     {file.name}
@@ -129,7 +132,6 @@ export default function ResumeUpload() {
                         </>
                     ) : (
                         <>
-                            {/* Empty state */}
                             <motion.p
                                 animate={{
                                     y: isDragActive ? -2 : 0,
@@ -153,7 +155,6 @@ export default function ResumeUpload() {
                 </motion.div>
             </div>
 
-            {/* Error */}
             {error && (
                 <motion.p
                     initial={{
@@ -170,7 +171,6 @@ export default function ResumeUpload() {
                 </motion.p>
             )}
 
-            {/* Analyze button */}
             {file && (
                 <motion.button
                     initial={{
@@ -188,7 +188,7 @@ export default function ResumeUpload() {
                     type="button"
                     disabled={isAnalyzing}
                     onClick={handleAnalyze}
-                    className="mt-4 w-full cursor-pointer rounded-xl bg-white py-3.5 text-sm font-medium text-black transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full cursor-pointer rounded-xl bg-black py-3.5 text-sm font-medium text-white transition-all duration-200 ease-in-out hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isAnalyzing ? (
                         <span className="flex items-center justify-center gap-2">

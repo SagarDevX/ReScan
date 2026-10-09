@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
@@ -5,323 +6,253 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 export const runtime = "nodejs";
 
 const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+    apiKey: process.env.GEMINI_API_KEY!,
 });
 
 export async function POST(request: Request) {
     try {
-        // 1. Get URL
-        const body = await request.json();
-        const { url } = body;
+        const { url, brutalMode } = await request.json();
+        const isBrutalMode = brutalMode === true;
 
-        // 2. Check URL
-        if (!url) {
+        if (!url || typeof url !== "string") {
             return NextResponse.json(
-                {
-                    error: "Portfolio URL is required",
-                },
+                { success: false, error: "Please provide a portfolio URL." },
                 { status: 400 }
             );
         }
 
-        // 3. Validate URL
         let portfolioUrl: URL;
 
         try {
             portfolioUrl = new URL(url);
         } catch {
             return NextResponse.json(
-                {
-                    error: "Please enter a valid URL",
-                },
+                { success: false, error: "Please enter a valid portfolio URL." },
                 { status: 400 }
             );
         }
 
-        // 4. Only allow HTTP / HTTPS
-        if (
-            portfolioUrl.protocol !== "http:" &&
-            portfolioUrl.protocol !== "https:"
-        ) {
+        if (!["http:", "https:"].includes(portfolioUrl.protocol)) {
             return NextResponse.json(
-                {
-                    error: "Only HTTP and HTTPS URLs are allowed",
-                },
+                { success: false, error: "Only HTTP and HTTPS URLs are supported." },
                 { status: 400 }
             );
         }
 
-        // 5. Fetch website
         const response = await fetch(portfolioUrl.href, {
             headers: {
-                "User-Agent": "Mozilla/5.0 ReScan",
+                "User-Agent": "Mozilla/5.0 ReScan Portfolio Analyzer",
+                Accept: "text/html",
             },
+            signal: AbortSignal.timeout(15000),
         });
 
         if (!response.ok) {
             return NextResponse.json(
                 {
-                    error: `Website returned status ${response.status}`,
+                    success: false,
+                    error: "We couldn't access this website. Check the URL and try again.",
                 },
                 { status: 400 }
             );
         }
 
-        // 6. Get HTML
+        const contentType = response.headers.get("content-type") || "";
+
+        if (!contentType.includes("text/html")) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "This URL doesn't appear to be a regular website.",
+                },
+                { status: 400 }
+            );
+        }
+
         const html = await response.text();
-
-
-        // 7. Load HTML with Cheerio
         const $ = cheerio.load(html);
+        $("script, style, noscript, iframe, svg, canvas").remove();
 
-        // 8. Extract title
-        const title = $("title").text().trim();
-
-        // 9. Extract meta description
-        const description =
-            $('meta[name="description"]')
-                .attr("content")
-                ?.trim() || "";
-
-        // 10. Extract headings
-        const headings = $("h1, h2, h3")
-            .map((_, element) => $(element).text().trim())
-            .get()
-            .filter(Boolean);
-
-        // 11. Extract paragraphs
-        const paragraphs = $("p")
-            .map((_, element) => $(element).text().trim())
-            .get()
-            .filter(Boolean);
-
-        // 12. Extract links
-        const links = $("a")
-            .map((_, element) => ({
-                text: $(element).text().trim(),
-                href: $(element).attr("href") || "",
-            }))
-            .get()
-            .filter((link) => link.text || link.href);
-
-        // 13. Prepare website data
         const websiteData = {
-            title,
-            description,
-            headings,
-            paragraphs,
-            links,
+            title: $("title").first().text().trim(),
+            description:
+                $('meta[name="description"]').attr("content")?.trim() || "",
+            headings: $("h1, h2, h3")
+                .map((_, element) => $(element).text().trim())
+                .get()
+                .filter(Boolean)
+                .slice(0, 40),
+            paragraphs: $("p")
+                .map((_, element) => $(element).text().trim())
+                .get()
+                .filter(Boolean)
+                .slice(0, 60),
+            links: $("a")
+                .map((_, element) => ({
+                    text: $(element).text().trim(),
+                    href: $(element).attr("href") || "",
+                }))
+                .get()
+                .filter((link) => link.text || link.href)
+                .slice(0, 60),
         };
 
-        // 14. Send data to Gemini
-        const start = Date.now();
+        const feedbackInstructions = isBrutalMode
+            ? `
+You are ReScan's BRUTALLY HONEST portfolio roaster.
 
-        const geminiResponse = await ai.models.generateContent({
-            model: "gemini-3.5-flash-lite",
+Your job is to give the user a serious reality check about their portfolio.
+Do not sound like a polite corporate consultant. Sound like a sharp,
+brutally honest friend who wants them to improve.
 
-            contents: `
-You are ReScan, a friendly but brutally honest portfolio reviewer.
+TONE:
+- Be savage, blunt, witty, and direct.
+- Use simple, everyday English that a beginner can understand.
+- Prefer short sentences and punchy lines.
+- Call out weak projects, boring descriptions, empty claims, unclear
+  positioning, poor content, and weak presentation when the evidence supports it.
+- Don't hide bad feedback behind polite words.
+- Don't give fake praise just to make the user feel better.
+- Don't make every line a joke. Make the criticism hit because it is true.
+- Roast the work, not the person's intelligence, identity, or personal worth.
 
-Your job is to review a developer's portfolio and explain what is good,
-what is bad, and what they should change.
+HOW TO REVIEW:
+- Be specific about what is wrong and why it matters.
+- Explain how a weakness could hurt the user's chances of getting hired.
+- Give a clear, practical fix for every major problem.
+- If the portfolio is genuinely strong in an area, acknowledge it honestly.
+- Never invent projects, missing features, design flaws, broken interactions,
+  performance problems, or other issues you cannot verify.
+- You are reviewing extracted website content, not seeing the full website.
+  You cannot reliably judge visual design, animations, responsiveness,
+  accessibility, or working interactions from this text alone.
+  Do not pretend you tested or saw those things.
+- If there is not enough evidence to judge something, say so briefly
+  in the relevant feedback rather than making up a roast.
+- Keep scores honest. Brutal Mode changes the wording, NOT the grading standards.
 
-IMPORTANT WRITING RULES:
+EXAMPLES OF THE REQUIRED TONE:
+Weak: "Your portfolio could communicate your skills more effectively."
+Better: "Your portfolio makes me work too hard to figure out what you do.
+Tell visitors what you build and why they should care."
 
-- Use simple everyday English.
-- Write like you are explaining the problem to a developer.
-- Avoid complicated or academic vocabulary.
-- Avoid corporate and marketing language.
-- Keep sentences short and clear.
-- Do not use words just to sound intelligent.
-- If a simple word works, use the simple word.
-- Be honest and direct, but never rude.
-- Give practical advice that the developer can actually follow.
-- Do not give generic advice.
-- Mention the actual problem you found.
-- Explain WHY it is a problem.
-- Then explain HOW to fix it.
+Weak: "Your projects need more differentiation."
+Better: "These projects don't give me a clear reason to remember you.
+Show what you built yourself, what problem you solved, and what makes
+your version worth looking at."
 
-For example:
+Weak: "Your descriptions lack detail."
+Better: "You say you built it, but give me almost nothing to prove it.
+Explain your role, the hard part, and what actually works."
 
-BAD:
-"The portfolio lacks clear positioning and fails to communicate
-the developer's value proposition effectively."
+Your roast must be based on THIS portfolio's actual extracted content.
+No generic insults. No made-up problems. No long, fancy vocabulary.
+`
+            : `
+You are a professional, supportive portfolio reviewer.
 
-GOOD:
-"It's not clear what kind of developer you are or what type of work
-you want to get. Add a short line near the top that clearly says
-what you do."
+Use clear, simple English. Be honest, constructive, and specific.
+Identify genuine strengths and weaknesses, explain why they matter,
+and suggest practical improvements.
 
-Another example:
+Do not invent problems or claim to have tested features you could not access.
+You are reviewing extracted website content, so do not pretend you can
+reliably judge visual design, animations, responsiveness, or interactions.
+Keep scores honest and base them on the available evidence.
+`;
 
-BAD:
-"The site's information hierarchy could be optimized."
+        const prompt = `
+${feedbackInstructions}
 
-GOOD:
-"The important information is hard to find. Your name, role,
-and main project should stand out more."
+Review this developer portfolio for someone trying to present their work
+professionally and improve their chances of getting hired.
 
-Another example:
+Evaluate these four areas:
+1. content: quality, clarity, and usefulness of the written content.
+2. positioning: how clearly the developer communicates their skills and value.
+3. ux: clarity of the website's content structure and navigation clues.
+   Only judge what can reasonably be inferred from the extracted content.
+4. seo: page title, meta description, headings, and other available content.
 
-BAD:
-"The website has insufficient semantic structure for search engines."
-
-GOOD:
-"Your page is missing useful headings. Add clear H1 and H2 headings
-so both visitors and search engines can understand the page."
-
----
-
-Analyze the portfolio using these four categories:
-
-1. Content
-Is the text clear and useful?
-Does the portfolio explain the developer and their work well?
-
-2. Positioning
-Is it clear what the developer does?
-Is it clear what kind of developer they are?
-Is it clear what type of work they are looking for?
-
-3. UX
-Is the website easy to understand and navigate?
-Can visitors quickly find important information?
-
-4. SEO
-Check the page title, meta description, headings,
-and content structure.
-
-Also provide:
+SCORING:
+- Give each category a score from 0 to 100.
+- Give an overall score from 0 to 100.
+- Score only what the available evidence supports.
+- Do not give high scores just to be nice.
+- Do not give low scores just to sound brutal.
+- Use the same scoring standards in both modes.
 
 STRENGTHS:
-List the best things about the portfolio.
+List genuine strengths supported by the content.
+Do not invent strengths. If there is little positive evidence, keep the list short.
 
 WEAKNESSES:
-List the biggest things that could be better.
+List the most important real problems.
+In Brutal Mode, explain them in blunt, simple language.
+Avoid repeating the same problem.
 
 MISTAKES:
-Find specific problems in the portfolio.
+Each item must contain:
+- section: the part of the portfolio involved.
+- mistake: what is wrong, explained clearly and directly.
+- fix: a specific action the user can take to improve it.
 
-For every mistake:
-- Say which section has the problem.
-- Explain the problem in simple English.
-- Give a clear and practical fix.
+Make the feedback useful, specific, and easy to understand.
+Return only valid JSON matching the requested schema.
+Do not include Markdown fences or any text outside the JSON.
 
-IMPORTANT:
+PORTFOLIO URL:
+${portfolioUrl.href}
 
-- Only use information from the provided website data.
-- Never invent something that is not there.
-- Do not give generic advice.
-- Be specific.
-- Use simple English.
-- Scores must be integers from 0 to 100.
-- 100 means excellent.
-- Keep feedback concise and useful.
-
-Website data:
-
+EXTRACTED WEBSITE CONTENT:
 ${JSON.stringify(websiteData, null, 2)}
-`,
+`;
 
+        const result = await ai.models.generateContent({
+            model: "gemini-3.5-flash-lite",
+            contents: prompt,
             config: {
                 thinkingConfig: {
                     thinkingLevel: ThinkingLevel.LOW,
                 },
-
                 responseMimeType: "application/json",
-
                 responseSchema: {
                     type: "object",
-
                     properties: {
                         overallScore: {
                             type: "number",
-                            minimum: 0,
-                            maximum: 100,
                         },
-
                         scores: {
                             type: "object",
-
                             properties: {
-                                content: {
-                                    type: "number",
-                                    minimum: 0,
-                                    maximum: 100,
-                                },
-
-                                positioning: {
-                                    type: "number",
-                                    minimum: 0,
-                                    maximum: 100,
-                                },
-
-                                ux: {
-                                    type: "number",
-                                    minimum: 0,
-                                    maximum: 100,
-                                },
-
-                                seo: {
-                                    type: "number",
-                                    minimum: 0,
-                                    maximum: 100,
-                                },
+                                content: { type: "number" },
+                                positioning: { type: "number" },
+                                ux: { type: "number" },
+                                seo: { type: "number" },
                             },
-
-                            required: [
-                                "content",
-                                "positioning",
-                                "ux",
-                                "seo",
-                            ],
+                            required: ["content", "positioning", "ux", "seo"],
                         },
-
                         strengths: {
                             type: "array",
-
-                            items: {
-                                type: "string",
-                            },
+                            items: { type: "string" },
                         },
-
                         weaknesses: {
                             type: "array",
-
-                            items: {
-                                type: "string",
-                            },
+                            items: { type: "string" },
                         },
-
                         mistakes: {
                             type: "array",
-
                             items: {
                                 type: "object",
-
                                 properties: {
-                                    section: {
-                                        type: "string",
-                                    },
-
-                                    mistake: {
-                                        type: "string",
-                                    },
-
-                                    fix: {
-                                        type: "string",
-                                    },
+                                    section: { type: "string" },
+                                    mistake: { type: "string" },
+                                    fix: { type: "string" },
                                 },
-
-                                required: [
-                                    "section",
-                                    "mistake",
-                                    "fix",
-                                ],
+                                required: ["section", "mistake", "fix"],
                             },
                         },
                     },
-
                     required: [
                         "overallScore",
                         "scores",
@@ -333,35 +264,37 @@ ${JSON.stringify(websiteData, null, 2)}
             },
         });
 
+        const text = result.text;
 
-        // 15. Get Gemini response
-        const analysis = geminiResponse.text;
-
-        if (!analysis) {
-            throw new Error(
-                "Gemini returned an empty response"
-            );
+        if (!text) {
+            throw new Error("The AI returned an empty response.");
         }
 
+        const analysis = JSON.parse(text);
 
-        // 16. Parse JSON
-        const parsedAnalysis = JSON.parse(analysis);
-
-
-        // 17. Return analysis
         return NextResponse.json({
             success: true,
             url: portfolioUrl.href,
-            analysis: parsedAnalysis,
+            brutalMode: isBrutalMode,
+            analysis,
         });
     } catch (error) {
-        console.error("❌ Portfolio analysis error:");
-        console.error(error);
+        console.error("Portfolio analysis error:", error);
+
+        if (error instanceof Error && error.name === "TimeoutError") {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "This website took too long to respond. Try again.",
+                },
+                { status: 504 }
+            );
+        }
 
         return NextResponse.json(
             {
                 success: false,
-                error: "Failed to analyze portfolio",
+                error: "We couldn't analyze this portfolio. Please try again.",
             },
             { status: 500 }
         );

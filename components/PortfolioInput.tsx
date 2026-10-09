@@ -3,7 +3,13 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 
-export default function PortfolioInput() {
+type PortfolioInputProps = {
+    brutalMode: boolean;
+};
+
+export default function PortfolioInput({
+    brutalMode,
+}: PortfolioInputProps) {
     const [url, setUrl] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState("");
@@ -27,7 +33,10 @@ export default function PortfolioInput() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ url: url.trim() }),
+                body: JSON.stringify({
+                    url: url.trim(),
+                    brutalMode,
+                }),
                 signal: controller.signal,
             });
 
@@ -98,7 +107,7 @@ export default function PortfolioInput() {
                         type="button"
                         onClick={handleAnalyze}
                         disabled={isAnalyzing}
-                        className="mt-4 w-full rounded-xl bg-white py-3.5 text-sm font-medium text-black transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                        className="mt-4 w-full rounded-xl bg-black py-3.5 text-sm font-medium text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                     >
                         {isAnalyzing ? (
                             <span className="flex items-center justify-center gap-2">
