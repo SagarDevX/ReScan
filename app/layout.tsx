@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -8,28 +8,66 @@ const geistSans = Geist({
 });
 
 
-
 export const metadata: Metadata = {
-  title: "ReScan",
-  description: "AI-powered resume analysis with brutally honest feedback.",
-  keywords: [
-    "AI resume analyzer", "resume review", "resume feedback", "resume checker", "AI resume reviewer", "resume roast", "resume improvement",
-  ],
-  openGraph: {
-    title: "ReScan — AI Resume Roast & Analysis",
-    description:
-      "Get your resume roasted by AI. Find weaknesses, improve your resume, and get brutally honest feedback.",
-    type: "website",
-    siteName: "ReScan",
-  },
+    metadataBase: new URL("https://rescan-ai.vercel.app"),
 
-  twitter: {
-    card: "summary_large_image",
-    title: "ReScan — AI Resume Roast & Analysis",
+    title: {
+        default: "ReScan - AI Resume & Portfolio Analyzer",
+        template: "%s | ReScan",
+    },
+
     description:
-      "Get your resume roasted by AI with brutally honest feedback.",
-  },
-};
+        "Analyze your resume or portfolio with AI-powered feedback. Discover weaknesses, identify areas for improvement, and build a stronger professional presence.",
+
+    applicationName: "ReScan",
+
+    keywords: [
+        "AI resume analyzer",
+        "AI resume checker",
+        "resume review tool",
+        "resume feedback",
+        "resume improvement",
+        "AI portfolio analyzer",
+        "portfolio review tool",
+        "website portfolio analysis",
+        "developer portfolio review",
+        "brutal resume review",
+    ],
+
+    openGraph: {
+        title: "ReScan - AI Resume & Portfolio Analyzer",
+        description:
+            "Get actionable AI feedback on your resume or portfolio. Find weaknesses, improve your presentation, and strengthen your professional profile.",
+        url: "https://rescan-ai.vercel.app",
+        siteName: "ReScan",
+        type: "website",
+        images: [
+            {
+                url: "/rescan.png",
+                width: 1200,
+                height: 630,
+                alt: "ReScan - AI Resume & Portfolio Analyzer",
+            },
+        ],
+    },
+
+    twitter: {
+        card: "summary_large_image",
+        title: "ReScan - AI Resume & Portfolio Analyzer",
+        description:
+            "Analyze your resume or portfolio with AI. Get honest feedback and actionable suggestions for improvement.",
+        images: ["/rescan.png"],
+    },
+
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+        },
+    },
+  }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
