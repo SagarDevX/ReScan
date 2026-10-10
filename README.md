@@ -3,7 +3,7 @@
 An AI-powered tool that analyzes resumes and developer portfolios, identifies weaknesses, and provides actionable feedback to help improve your professional presence.
 
 ## Preview
-![ReScan Landing Page](.public//rescan.png)
+![ReScan Landing Page](public/rescan.png)
 
 **[Live Demo](https://rescan-ai.vercel.app)**
 
